@@ -30,32 +30,19 @@ LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 
 
-def test_network(client):
-
-    print '-------- Testing Network CRUD-----'
-    test_network_crud(client)
-
-    print '-------- Testing Network Bulk-----'
-    test_network_bulk(client)
-
-
-def test_security_group(client):
-
-    print '-------- Testing Security Group CRUD-----'
-    test_security_group_crud(client)
-
-    print '-------- Testing Security Group Bulk-----'
-    test_security_group_bulk(client)
-
-
 def test_network_crud(client):
+    print '-------- Testing Network CRUD-----'
     id = str(uuid.uuid4())
     input = {"id": id,
              "name": "name",
              "tenant_id": "tenant_id",
-             "admin_state_up:": True}
+             "admin_state_up": True,
+             "router:external": True}
     output = client.create_network(input)
     assert output["id"] == id
+
+    test_subnet_crud(client, id)
+    test_subnet_bulk(client, id)
 
     output["admin_state_up"] = False
     client.update_network(id, output)
@@ -72,29 +59,99 @@ def test_network_crud(client):
 
 
 def test_network_bulk(client):
+    print '-------- Testing Network Bulk-----'
     id1 = str(uuid.uuid4())
     id2 = str(uuid.uuid4())
     input = [{"id": id1,
               "name": "name1",
               "tenant_id": "tenant_id1",
-              "admin_state_up:": True},
+              "admin_state_up": True},
              {"id": id2,
               "name": "name2",
               "tenant_id": "tenant_id2",
-              "admin_state_up:": False}]
+              "admin_state_up": False}]
 
     output = client.create_network_bulk(input)
     assert len(output) == 2
     diff = [x for x in output if x["id"] not in [id1, id2]]
     assert len(diff) == 0
 
+    client.delete_network(id1)
+    client.delete_network(id2)
+
+
+def test_subnet_crud(client, net_id):
+    print '-------- Testing Subnet CRUD-----'
+    id = str(uuid.uuid4())
+    input = {"id": id,
+             "name": "name",
+             "tenant_id": "tenant_id",
+             "ip_version": 4,
+             "network_id": net_id,
+             "cidr": "10.0.0.0/24",
+             "gateway_ip": "10.0.0.1",
+             "enable_dhcp": True,
+             "shared": False}
+    output = client.create_subnet(input)
+    assert output["id"] == id
+
+    output["enable_dhcp"] = False
+    output = client.update_subnet(id, output)
+    print output
+    assert output["enable_dhcp"] is False
+
+    output["enable_dhcp"] = True
+    output = client.update_subnet(id, output)
+    assert output["enable_dhcp"] is True
+
+    client.delete_subnet(id)
+
+    try:
+        client.get_subnet(id)
+        assert False
+    except exc.HTTPNotFound:
+        pass
+
+
+def test_subnet_bulk(client, net_id):
+    print '-------- Testing Subnet Bulk-----'
+    id1 = str(uuid.uuid4())
+    id2 = str(uuid.uuid4())
+    input = [{"id": id1,
+             "name": "name1",
+             "tenant_id": "tenant_id1",
+             "ip_version": 4,
+             "network_id": net_id,
+             "cidr": "10.0.0.0/24",
+             "gateway_ip": "10.0.0.1",
+             "enable_dhcp": True,
+             "shared": False},
+             {"id": id2,
+              "name": "name2",
+              "tenant_id": "tenant_id2",
+              "ip_version": 4,
+              "network_id": net_id,
+              "cidr": "10.0.1.0/24",
+              "gateway_ip": "10.0.1.1",
+              "enable_dhcp": False,
+              "shared": True}]
+
+    output = client.create_subnet_bulk(input)
+    assert len(output) == 2
+    diff = [x for x in output if x["id"] not in [id1, id2]]
+    assert len(diff) == 0
+
+    client.delete_subnet(id1)
+    client.delete_subnet(id2)
+
 
 def test_security_group_crud(client):
+    print '-------- Testing Security Group CRUD-----'
     id = str(uuid.uuid4())
     input = {"id": id,
              "name": "name1",
              "tenant_id": "tenant_id",
-             "description:": "description"}
+             "description": "description"}
     output = client.create_security_group(input)
     assert output["id"] == id
     assert output["name"] == "name1"
@@ -116,16 +173,17 @@ def test_security_group_crud(client):
 
 
 def test_security_group_bulk(client):
+    print '-------- Testing Security Group Bulk-----'
     id1 = str(uuid.uuid4())
     id2 = str(uuid.uuid4())
     input = [{"id": id1,
               "name": "name1",
               "tenant_id": "tenant_id1",
-              "description:": "description1"},
+              "description": "description1"},
              {"id": id2,
               "name": "name2",
               "tenant_id": "tenant_id2",
-              "description:": "description2"}]
+              "description": "description2"}]
 
     output = client.create_security_group_bulk(input)
     assert len(output) == 2
@@ -137,6 +195,7 @@ def test_security_group_bulk(client):
 
 
 def test_security_group_rule_crud(client, sg_id):
+    print '-------- Testing Security Group Rule CRUD-----'
     id = str(uuid.uuid4())
     input = {"id": id,
              "direction": "ingress",
@@ -160,6 +219,7 @@ def test_security_group_rule_crud(client, sg_id):
 
 
 def test_security_group_rule_bulk(client, sg_id):
+    print '-------- Testing Security Group Rule bulk-----'
     id1 = str(uuid.uuid4())
     id2 = str(uuid.uuid4())
     input = [{"id": id1,
@@ -214,11 +274,10 @@ def main():
 
     client = MidonetClient(uri, username, password, project_id=project_id)
 
-    print '-------- Testing Network -----'
-    test_network(client)
-
-    print '-------- Testing Security Group -----'
-    test_security_group(client)
+    test_network_crud(client)
+    test_network_bulk(client)
+    test_security_group_crud(client)
+    test_security_group_bulk(client)
 
 
 if __name__ == "__main__":

@@ -31,6 +31,8 @@ class MediaType(object):
     NEUTRON = "application/vnd.org.midonet.neutron.Neutron-v1+json"
     NETWORK = "application/vnd.org.midonet.neutron.Network-v1+json"
     NETWORKS = "application/vnd.org.midonet.neutron.Networks-v1+json"
+    SUBNET = "application/vnd.org.midonet.neutron.Subnet-v1+json"
+    SUBNETS = "application/vnd.org.midonet.neutron.Subnets-v1+json"
     SECURITY_GROUP = \
         "application/vnd.org.midonet.neutron.SecurityGroup-v1+json"
     SECURITY_GROUPS = \
@@ -64,6 +66,12 @@ class UrlProvider(object):
 
     def networks_url(self):
         return self._get_neutron()["networks"]
+
+    def subnet_url(self, id):
+        return self._get_neutron()["subnet_template"].replace("{id}", id)
+
+    def subnets_url(self):
+        return self._get_neutron()["subnets"]
 
     def security_group_url(self, id):
         return self._get_neutron()["security_group_template"].replace(
@@ -112,7 +120,34 @@ class MidonetClient(UrlProvider):
 
     def update_network(self, id, network):
         LOG.info("update_network %r", network)
-        self.client.put(self.network_url(id), MediaType.NETWORK, network)
+        return self.client.put(self.network_url(id), MediaType.NETWORK,
+                               network)
+
+    def create_subnet(self, subnet):
+        LOG.info("create_subnet %r", subnet)
+        return self.client.post(self.subnets_url(), MediaType.SUBNET,
+                                body=subnet)
+
+    def create_subnet_bulk(self, subnets):
+        LOG.info("create_subnet_bulk entered")
+        return self.client.post(self.subnets_url(), MediaType.SUBNETS,
+                                body=subnets)
+
+    def delete_subnet(self, id):
+        LOG.info("delete_subnet %r", id)
+        self.client.delete(self.subnet_url(id))
+
+    def get_subnet(self, id):
+        LOG.info("get_subnet %r", id)
+        return self.client.get(self.subnet_url(id), MediaType.SUBNET)
+
+    def list_subnets(self):
+        LOG.info("list_subnets")
+        return self.client.get(self.subnets_url(), MediaType.SUBNETS)
+
+    def update_subnet(self, id, subnet):
+        LOG.info("update_subnet %r", subnet)
+        return self.client.put(self.subnet_url(id), MediaType.SUBNET, subnet)
 
     def create_security_group(self, security_group):
         LOG.info("create_security_group %r", security_group)
@@ -142,8 +177,8 @@ class MidonetClient(UrlProvider):
 
     def update_security_group(self, id, security_group):
         LOG.info("update_security_group %r", security_group)
-        self.client.put(self.security_group_url(id), MediaType.SECURITY_GROUP,
-                        security_group)
+        return self.client.put(self.security_group_url(id),
+                               MediaType.SECURITY_GROUP, security_group)
 
     def create_security_group_rule(self, security_group_rule):
         LOG.info("create_security_group_rule %r", security_group_rule)

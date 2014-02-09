@@ -43,4 +43,6 @@ class HttpClient(object):
 
     def put(self, uri, media_type, body=None):
         headers = {"Content-Type": media_type}
-        self.auth_lib.do_request(uri, 'PUT', body=body, headers=headers)
+        resp, data = self.auth_lib.do_request(uri, 'PUT', body=body,
+                                              headers=headers)
+        return data
