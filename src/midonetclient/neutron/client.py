@@ -33,6 +33,8 @@ class MediaType(object):
     NETWORKS = "application/vnd.org.midonet.neutron.Networks-v1+json"
     SUBNET = "application/vnd.org.midonet.neutron.Subnet-v1+json"
     SUBNETS = "application/vnd.org.midonet.neutron.Subnets-v1+json"
+    PORT = "application/vnd.org.midonet.neutron.Port-v1+json"
+    PORTS = "application/vnd.org.midonet.neutron.Ports-v1+json"
     SECURITY_GROUP = \
         "application/vnd.org.midonet.neutron.SecurityGroup-v1+json"
     SECURITY_GROUPS = \
@@ -72,6 +74,12 @@ class UrlProvider(object):
 
     def subnets_url(self):
         return self._get_neutron()["subnets"]
+
+    def port_url(self, id):
+        return self._get_neutron()["port_template"].replace("{id}", id)
+
+    def ports_url(self):
+        return self._get_neutron()["ports"]
 
     def security_group_url(self, id):
         return self._get_neutron()["security_group_template"].replace(
@@ -114,8 +122,8 @@ class MidonetClient(UrlProvider):
         LOG.info("get_network %r", id)
         return self.client.get(self.network_url(id), MediaType.NETWORK)
 
-    def list_networks(self):
-        LOG.info("list_networks")
+    def get_networks(self):
+        LOG.info("get_networks")
         return self.client.get(self.networks_url(), MediaType.NETWORKS)
 
     def update_network(self, id, network):
@@ -141,13 +149,37 @@ class MidonetClient(UrlProvider):
         LOG.info("get_subnet %r", id)
         return self.client.get(self.subnet_url(id), MediaType.SUBNET)
 
-    def list_subnets(self):
-        LOG.info("list_subnets")
+    def get_subnets(self):
+        LOG.info("get_subnets")
         return self.client.get(self.subnets_url(), MediaType.SUBNETS)
 
     def update_subnet(self, id, subnet):
         LOG.info("update_subnet %r", subnet)
         return self.client.put(self.subnet_url(id), MediaType.SUBNET, subnet)
+
+    def create_port(self, port):
+        LOG.info("create_port %r", port)
+        return self.client.post(self.ports_url(), MediaType.PORT, body=port)
+
+    def create_port_bulk(self, ports):
+        LOG.info("create_port_bulk entered")
+        return self.client.post(self.ports_url(), MediaType.PORTS, body=ports)
+
+    def delete_port(self, id):
+        LOG.info("delete_port %r", id)
+        self.client.delete(self.port_url(id))
+
+    def get_port(self, id):
+        LOG.info("get_port %r", id)
+        return self.client.get(self.port_url(id), MediaType.PORT)
+
+    def get_ports(self):
+        LOG.info("get_ports")
+        return self.client.get(self.ports_url(), MediaType.PORTS)
+
+    def update_port(self, id, port):
+        LOG.info("update_port %r", port)
+        return self.client.put(self.port_url(id), MediaType.PORT, port)
 
     def create_security_group(self, security_group):
         LOG.info("create_security_group %r", security_group)
@@ -170,8 +202,8 @@ class MidonetClient(UrlProvider):
         return self.client.get(self.security_group_url(id),
                                MediaType.SECURITY_GROUP)
 
-    def list_security_groups(self):
-        LOG.info("list_security_groups")
+    def get_security_groups(self):
+        LOG.info("get_security_groups")
         return self.client.get(self.security_groups_url(),
                                MediaType.SECURITY_GROUPS)
 
