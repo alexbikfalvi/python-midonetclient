@@ -140,9 +140,28 @@ def smoke_test(client):
     assert output["id"] == port_id
     print '-------- port created: %s-----' % port_id
 
+    # Create a router that's linked to the external network
+    router_id = str(uuid.uuid4())
+    input = {"id": router_id,
+             "name": "name",
+             "admin_state_up": True,
+             "tenant_id": "tenant",
+             "external_gateway_info": {
+                 "network_id": ext_net_id,
+                 "enable_snat": True
+             }}
+    output = client.create_router(input)
+    assert output["id"] == router_id
+    print '-------- router created: %s-----' % router_id
+
+    # TODO Add updates
+
     print '-------- Cleaning Up ----------'
 
     # Delete everything
+    client.delete_router(router_id)
+    print '-------- router deleted: %s-----' % router_id
+
     client.delete_port(port_id)
     print '-------- port deleted: %s-----' % port_id
 
