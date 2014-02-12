@@ -37,6 +37,8 @@ class MediaType(object):
     PORTS = "application/vnd.org.midonet.neutron.Ports-v1+json"
     ROUTER = "application/vnd.org.midonet.neutron.Router-v1+json"
     ROUTERS = "application/vnd.org.midonet.neutron.Routers-v1+json"
+    ROUTER_INTERFACE = \
+        "application/vnd.org.midonet.neutron.RouterInterface-v1+json"
     SECURITY_GROUP = \
         "application/vnd.org.midonet.neutron.SecurityGroup-v1+json"
     SECURITY_GROUPS = \
@@ -88,6 +90,14 @@ class UrlProvider(object):
 
     def routers_url(self):
         return self._get_neutron()["routers"]
+
+    def add_router_interface_url(self, id):
+        return self._get_neutron()["add_router_interface_template"].replace(
+            "{id}", id)
+
+    def remove_router_interface_url(self, id):
+        return self._get_neutron()["remove_router_interface_template"].replace(
+            "{id}", id)
 
     def security_group_url(self, id):
         return self._get_neutron()["security_group_template"].replace(
@@ -209,6 +219,16 @@ class MidonetClient(UrlProvider):
     def update_router(self, id, router):
         LOG.info("update_router %r", router)
         return self.client.put(self.router_url(id), MediaType.ROUTER, router)
+
+    def add_router_interface(self, id, interface_info):
+        LOG.info("add_router_interface %r %r", (id, interface_info))
+        return self.client.put(self.add_router_interface_url(id),
+                               MediaType.ROUTER_INTERFACE, interface_info)
+
+    def remove_router_interface(self, id, interface_info):
+        LOG.info("remove_router_interface %r %r", (id, interface_info))
+        return self.client.put(self.remove_router_interface_url(id),
+                               MediaType.ROUTER_INTERFACE, interface_info)
 
     def create_security_group(self, security_group):
         LOG.info("create_security_group %r", security_group)

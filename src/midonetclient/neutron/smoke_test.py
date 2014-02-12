@@ -154,9 +154,19 @@ def smoke_test(client):
     assert output["id"] == router_id
     print '-------- router created: %s-----' % router_id
 
+    # Add a router interface
+    interface_input = {"subnet_id": subnet_id}
+    output = client.add_router_interface(router_id, interface_input)
+    assert output["port_id"] is not None
+    print '-------- router interface added: %s-----' % output["port_id"]
+
     # TODO Add updates
 
     print '-------- Cleaning Up ----------'
+
+    # Remove router interface
+    client.remove_router_interface(router_id, interface_input)
+    print '-------- router interface deleted: %s-----' % subnet_id
 
     # Delete everything
     client.delete_router(router_id)
