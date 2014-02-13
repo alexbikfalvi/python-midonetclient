@@ -93,13 +93,13 @@ class UrlProvider(object):
     def routers_url(self):
         return self._get_neutron()["routers"]
 
-    def add_router_interface_url(self, id):
+    def add_router_interface_url(self, router_id):
         return self._get_neutron()["add_router_interface_template"].replace(
-            "{id}", id)
+            "{router_id}", router_id)
 
-    def remove_router_interface_url(self, id):
+    def remove_router_interface_url(self, router_id):
         return self._get_neutron()["remove_router_interface_template"].replace(
-            "{id}", id)
+            "{router_id}", router_id)
 
     def floating_ip_url(self, id):
         return self._get_neutron()["floating_ip_template"].replace("{id}", id)
@@ -228,14 +228,14 @@ class MidonetClient(UrlProvider):
         LOG.info("update_router %r", router)
         return self.client.put(self.router_url(id), MediaType.ROUTER, router)
 
-    def add_router_interface(self, id, interface_info):
-        LOG.info("add_router_interface %r %r", (id, interface_info))
-        return self.client.put(self.add_router_interface_url(id),
+    def add_router_interface(self, router_id, interface_info):
+        LOG.info("add_router_interface %r %r", (router_id, interface_info))
+        return self.client.put(self.add_router_interface_url(router_id),
                                MediaType.ROUTER_INTERFACE, interface_info)
 
-    def remove_router_interface(self, id, interface_info):
-        LOG.info("remove_router_interface %r %r", (id, interface_info))
-        return self.client.put(self.remove_router_interface_url(id),
+    def remove_router_interface(self, router_id, interface_info):
+        LOG.info("remove_router_interface %r %r", (router_id, interface_info))
+        return self.client.put(self.remove_router_interface_url(router_id),
                                MediaType.ROUTER_INTERFACE, interface_info)
 
     def create_floating_ip(self, floating_ip):
