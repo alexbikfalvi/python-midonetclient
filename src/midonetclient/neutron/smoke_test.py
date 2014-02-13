@@ -140,6 +140,8 @@ def smoke_test(client):
     assert output["id"] == port_id
     print '-------- port created: %s-----' % port_id
 
+    # TODO: Find a way to emulate attaching the router to a provider router.
+
     # Create a router that's linked to the external network
     router_id = str(uuid.uuid4())
     input = {"id": router_id,
@@ -160,9 +162,21 @@ def smoke_test(client):
     assert output["port_id"] is not None
     print '-------- router interface added: %s-----' % output["port_id"]
 
-    # TODO Add updates
+    # Create a floating IP on the external network
+    floating_ip_id = str(uuid.uuid4())
+    input = {"id": floating_ip_id,
+             "floating_network_id": ext_net_id}
+    output = client.create_floating_ip(input)
+    assert output["id"] == floating_ip_id
+    print '-------- floating IP created: %s-----' % floating_ip_id
+
+    # TODO Add updates, especially for routers and floating IP
 
     print '-------- Cleaning Up ----------'
+
+    # Remove floating IP
+    client.delete_floating_ip(floating_ip_id)
+    print '-------- floating IP deleted: %s-----' % floating_ip_id
 
     # Remove router interface
     client.remove_router_interface(router_id, interface_input)

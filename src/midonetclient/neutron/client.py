@@ -39,6 +39,8 @@ class MediaType(object):
     ROUTERS = "application/vnd.org.midonet.neutron.Routers-v1+json"
     ROUTER_INTERFACE = \
         "application/vnd.org.midonet.neutron.RouterInterface-v1+json"
+    FLOATING_IP = "application/vnd.org.midonet.neutron.FloatingIp-v1+json"
+    FLOATING_IPS = "application/vnd.org.midonet.neutron.FloatingIps-v1+json"
     SECURITY_GROUP = \
         "application/vnd.org.midonet.neutron.SecurityGroup-v1+json"
     SECURITY_GROUPS = \
@@ -98,6 +100,12 @@ class UrlProvider(object):
     def remove_router_interface_url(self, id):
         return self._get_neutron()["remove_router_interface_template"].replace(
             "{id}", id)
+
+    def floating_ip_url(self, id):
+        return self._get_neutron()["floating_ip_template"].replace("{id}", id)
+
+    def floating_ips_url(self):
+        return self._get_neutron()["floating_ips"]
 
     def security_group_url(self, id):
         return self._get_neutron()["security_group_template"].replace(
@@ -229,6 +237,28 @@ class MidonetClient(UrlProvider):
         LOG.info("remove_router_interface %r %r", (id, interface_info))
         return self.client.put(self.remove_router_interface_url(id),
                                MediaType.ROUTER_INTERFACE, interface_info)
+
+    def create_floating_ip(self, floating_ip):
+        LOG.info("create_floating_ip %r", floating_ip)
+        return self.client.post(self.floating_ips_url(), MediaType.FLOATING_IP,
+                                body=floating_ip)
+
+    def delete_floating_ip(self, id):
+        LOG.info("delete_floating_ip %r", id)
+        self.client.delete(self.floating_ip_url(id))
+
+    def get_floating_ip(self, id):
+        LOG.info("get_floating_ip %r", id)
+        return self.client.get(self.floating_ip_url(id), MediaType.FLOATING_IP)
+
+    def get_floating_ips(self):
+        LOG.info("get_floating_ips")
+        return self.client.get(self.floating_ips_url(), MediaType.FLOATING_IPS)
+
+    def update_floating_ip(self, id, floating_ip):
+        LOG.info("update_floating_ip %r", floating_ip)
+        return self.client.put(self.floating_ip_url(id), MediaType.FLOATING_IP,
+                               floating_ip)
 
     def create_security_group(self, security_group):
         LOG.info("create_security_group %r", security_group)
