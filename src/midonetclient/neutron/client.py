@@ -482,11 +482,13 @@ class MidonetClient(UrlProvider, L3, SecurityGroup, Loadbalancer, Firewall):
         LOG.info("delete_network %r", id)
         self.client.delete(self.network_url(id))
 
-    def get_network(self, id):
+    def get_network(self, id, fields=None):
         LOG.info("get_network %r", id)
         return self.client.get(self.network_url(id), media_type.NETWORK)
 
-    def get_networks(self):
+    def get_networks(self, filters=None, fields=None,
+                     sorts=None, limit=None, marker=None,
+                     page_reverse=False):
         LOG.info("get_networks")
         return self.client.get(self.networks_url(), media_type.NETWORKS)
 
