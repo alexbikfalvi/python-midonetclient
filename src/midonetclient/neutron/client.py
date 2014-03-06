@@ -54,11 +54,11 @@ class L3(object):
 
     def add_router_interface_url(self, router_id):
         return self._get_neutron()["add_router_interface_template"].replace(
-            "{router_id}", router_id)
+            "{id}", router_id)
 
     def remove_router_interface_url(self, router_id):
         return self._get_neutron()["remove_router_interface_template"].replace(
-            "{router_id}", router_id)
+            "{id}", router_id)
 
     def floating_ip_url(self, id):
         return self._get_neutron()["floating_ip_template"].replace("{id}", id)
