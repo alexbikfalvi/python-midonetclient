@@ -27,6 +27,7 @@ from shlex import split as shsplit
 from webob import exc
 
 from midonetclient.api import MidonetApi
+from midonetclient.resource_base import ResourceId
 
 ################################################################################
 # Utility functions
@@ -34,11 +35,38 @@ from midonetclient.api import MidonetApi
 
 uuid_pattern = re.compile("^[0-F]{8}-[0-F]{4}-[0-F]{4}-[0-F]{4}-[0-F]{12}$", re.I)
 def is_valid_uuid(value):
-    return True if uuid_pattern.match(value) is not None else False
+    return uuid_pattern.match(str(value))
+
 
 hex_uuid_pattern = re.compile("^[0-F]{32}$", re.I)
 def is_valid_hex_uuid(value):
-    return True if hex_uuid_pattern.match(value) is not None else False
+    return hex_uuid_pattern.match(str(value))
+
+
+def is_resource_id(value):
+    """Tests if it's a ResourceID."""
+    return isinstance(value, ResourceId)
+
+
+def is_inverted_name_str(value):
+    """Tests if it's an inverted (prefixed with "!") UUID/alias string."""
+    return str(value).startswith("!")
+
+
+def normalize_inverted_name_str(name):
+    """Returns the original (without "!") UUID/alias string.
+
+    Args:
+        name: An inverted UUID/alias string.
+    Returns:
+        The UUID/alias string without "!" prefix.
+    """
+    return name.lstrip('!')
+
+
+def invert_name_str(name):
+    """Inverts the name string."""
+    return "!%s" % name
 
 ################################################################################
 # Session initialization
@@ -373,7 +401,7 @@ class SingleAttr(Attr):
             if self.has_inv():
                 func = obj.reflect(self.inv_getter)
                 if func():
-                    return "!%s" % (v)
+                    return invert_name_str(v)
         except KeyError as e:
             pass
         return v
@@ -399,9 +427,9 @@ class SingleAttr(Attr):
         v = value
         if self.inv_setter is not None:
             inv = False
-            if (value.startswith("!")):
+            if is_inverted_name_str(value):
                 inv = True
-                v = value.lstrip('!')
+                v = normalize_inverted_name_str(value)
             func = obj.reflect(self.inv_setter)
             func(inv)
         return v
@@ -887,22 +915,24 @@ class Namespace():
         return "%s%s" % (prefix, count)
 
     def lookup(self, name):
-        """Looks up a corresponding UUID for a given alias.
+        """Resolves an alias to a corresponding UUID if one is given.
 
         Arguments:
-        name -- An alias. Might be in the inverted form. Eg. "!pgroup0"
+            name: An alias, a UUID string, or a ResourceId instance. Might be in
+                  the inverted form. E.g. "!pgroup0"
 
-        Returns: An UUID for the alias. If the alias is inverted, its UUID would
-        also be inverted as in "!d3ab9c45-1e83-4c44-864f-51e698d6cc47".
+        Returns:
+            An UUID for the alias. If the alias is inverted, its UUID would also
+            be inverted as in "!d3ab9c45-1e83-4c44-864f-51e698d6cc47".
         """
         normalized_name = name
         is_inverse = False
-        if name.startswith("!"):
-            normalized_name = name.lstrip('!')
+        if is_inverted_name_str(name):
+            normalized_name = normalize_inverted_name_str(name)
             is_inverse = True
         if self._aliases.has_key(normalized_name):
             resolved = self._aliases[normalized_name]
-            if is_inverse: resolved = '!%s' % resolved
+            if is_inverse: resolved = invert_name_str(resolved)
             return resolved
         else:
             return None
@@ -951,7 +981,10 @@ class AliasManager():
     # definition) to each component in the chain of aliases. So aliases need to
     # store both uuid and attribute spec.
     def lookup(self, name, parent=None):
-        chain = name.split(':')
+        if is_resource_id(name):
+            chain = [name]
+        else:
+            chain = name.split(':')
         namespace = self._root_namespace
         resolved = None
 
@@ -1151,7 +1184,18 @@ class ObjectType(object):
         return False
 
     def fetch_one_for_type(self, object_type, id_):
-        if not is_valid_uuid(id_):
+        """Fetches one object with specified type & ID.
+
+        Args:
+            object_type: String indicating the type. E.g. bridge
+            id_: An ID of the object. This could be either:
+                 1. A UUID string,
+                 2. A ResourceId instance.
+
+        Returns:
+            The fetched object, or None if one doesn't exist.
+        """
+        if not (is_resource_id(id_) or is_valid_uuid(id_)):
             return None
 
         if not self.has_type(object_type):
@@ -1161,7 +1205,17 @@ class ObjectType(object):
         if not attr.getter:
             return None
 
-        func = app.reflect(attr.getter)
+        # We should look up a corresponding getter in the current context,
+        # e.g. VtepBinding for vtep0:binding:0. However, the pre-existing
+        # implementation always looks up in the top level "app" (=Midonet),
+        # which I believe is a bug. Need to keep the behavior for now otherwise
+        # it breaks for chain:rule, for example.
+        # TODO(tomohiko) Fix this.
+        try:
+            func = self.reflect(attr.getter)
+        except:
+            func = app.reflect(attr.getter)
+
         try:
             obj = func(id_)
         except:
@@ -2208,15 +2262,15 @@ class Vtep(ObjectType):
     def __init__(self, obj):
         super(Vtep, self).__init__(obj)
         self.clear_attrs()
+        self.put_attr(SingleAttr(name = 'id',
+                                 value_type = StringType(),
+                                 getter = 'get_id',
+                                 writeable = False,
+                                 show = False))
         self.put_attr(SingleAttr(name = 'name',
                                  value_type = StringType(),
                                  setter = '',
                                  getter = 'get_name'))
-        # Description field is not implemented.
-        #self.put_attr(SingleAttr(name = 'description',
-        #                         value_type = StringType(),
-        #                         setter = 'description',
-        #                         getter = 'get_description'))
         self.put_attr(SingleAttr(name = 'management-ip',
                                  value_type = IPv4Address(),
                                  getter = 'get_management_ip',
@@ -2236,7 +2290,7 @@ class Vtep(ObjectType):
         self.put_attr(Collection(name = 'binding',
                                  element_type = VtepBinding,
                                  list_method = 'get_bindings',
-                                 getter = '',
+                                 getter = 'get_binding',
                                  factory_method = 'add_binding'))
 
     def type_name(self):
@@ -2247,6 +2301,11 @@ class VtepBinding(ObjectType):
     def __init__(self, obj):
         super(VtepBinding, self).__init__(obj)
         self.clear_attrs()
+        self.put_attr(SingleAttr(name = 'id',
+                                 value_type = StringType(),
+                                 getter = 'get_id',
+                                 writeable = False,
+                                 show = False))
         self.put_attr(SingleAttr(name = 'management-ip',
                                  value_type = IPv4Address(),
                                  getter = 'get_mgmt_ip'))
@@ -2348,7 +2407,8 @@ class Midonet(ObjectType):
         self.put_attr(Collection(name = 'vtep',
                                  element_type = Vtep,
                                  list_method = 'get_vteps',
-                                 getter = 'get_vtep',
+                                 getter = 'get_vtep_by_id',
+                                 list_with_tenant = True,
                                  factory_method = 'add_vtep'))
 
 

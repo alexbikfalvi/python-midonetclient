@@ -22,6 +22,8 @@
 class ResourceBase(object):
 
     media_type = 'application/json'  # default media_type for all subclasses
+    ID_TOKEN = '{id}'
+    IP_ADDR_TOKEN = '{ipAddr}'
 
     def __init__(self, uri, dto, auth):
         self.uri = uri
@@ -35,6 +37,61 @@ class ResourceBase(object):
     def _ensure_accept(self, headers):
         """Ensure that http header dict has a value for 'Accept'"""
         headers.setdefault('Accept', self.media_type)
+
+    def _create_uri_from_template(self, template, token, value):
+        return template.replace(token, value)
+
+    def _create_uri_from_template_with_dict(self, template, dictionary):
+        uri = template
+        for place_holder, value in dictionary.items():
+            uri = uri.replace(place_holder, str(value))
+        return uri
+
+    def _get_resource(self, clazz, create_uri, uri):
+        return clazz(create_uri, {'uri': uri}, self.auth).get(
+            headers={'Content-Type': clazz.media_type,
+                     'Accept': clazz.media_type})
+
+    def _get_resource_by_id(self, clazz, create_uri,
+                            template, id_):
+        uri = self._create_uri_from_template(template,
+                                             self.ID_TOKEN,
+                                             id_)
+        return self._get_resource(clazz, create_uri, uri)
+
+    def _get_resource_by_ip_addr(self, clazz, create_uri,
+                                 template, ip_address):
+        uri = self._create_uri_from_template(template,
+                                             self.IP_ADDR_TOKEN,
+                                             ip_address)
+        return self._get_resource(clazz, create_uri, uri)
+
+    def _get_resource_with_params(self, clazz, create_uri, template, params):
+        """GETS a resource on a templated url with params populated.
+
+        Executes GET on a url constructed from the parametrized template.
+        Args:
+            clazz: A class for the resource.
+            create_uri: A create URI.
+            template: A URI template containing parameters as place holders.
+            params: A dictionary from a uri template param to a value.
+        Returns:
+            A GETted resource.
+        """
+        uri = self._create_uri_from_template_with_dict(template, params)
+        return self._get_resource(clazz, create_uri, uri)
+
+    def _delete_resource_by_id(self, template, id_):
+        uri = self._create_uri_from_template(template,
+                                             self.ID_TOKEN,
+                                             id_)
+        self.auth.do_request(uri, 'DELETE')
+
+    def _delete_resource_by_ip_addr(self, template, ip_address):
+        uri = self._create_uri_from_template(template,
+                                             self.IP_ADDR_TOKEN,
+                                             ip_address)
+        self.auth.do_request(uri, 'DELETE')
 
     def create(self, headers=None):
         """Does REST POST at some uri followed by REST GET at new location"""
@@ -97,3 +154,9 @@ class ResourceBase(object):
 
     def __repr__(self):
         return self.__class__.__name__ + str(self.dto)
+
+
+class ResourceId(object):
+    """A base class for representing a resource ID."""
+    def __init__(self):
+        pass

@@ -504,17 +504,35 @@ class MidonetApi(object):
         rule = rule.properties(vals.get("properties"))
         return rule.create()
 
-    def get_vteps(self):
+    def get_vteps(self, query):
         self._ensure_application()
-        return self.app.get_vteps()
+        return self.app.get_vteps(query)
 
     def add_vtep(self):
         self._ensure_application()
         return self.app.add_vtep()
 
     def get_vtep(self, mgmt_ip):
+        """Looks up a VTEP resource for the specified management IP address.
+
+        Args:
+            mgmt_ip: A management IP address.
+        Returns:
+            A VTEP resource.
+        """
         self._ensure_application()
         return self.app.get_vtep(mgmt_ip)
+
+    def get_vtep_by_id(self, vtep_id):
+        """Looks up a VTEP resource for the specified VtepId.
+
+        Args:
+            vtep_id: A VtepId.
+        Returns:
+            A VTEP resource.
+        """
+        self._ensure_application()
+        return self.app.get_vtep_by_id(vtep_id)
 
     def delete_vtep(self, mgmt_ip):
         self._ensure_application()
